@@ -25,6 +25,5 @@ def IsStrucure (S : DefinableFamily) : Prop :=
     (∀ A : Set (Fin n → ℝ), A ∈ S.definable n →
       (∀ i : Fin n, ∃ U : Set ℝ, U ∈ S.definable 1 ∧
         (∀ x : Fin n → ℝ, x ∈ A → x i ∈ U))) ∧-/
-    (∀ U V : Set (Fin n →  ℝ), U ∈ S.definable n → V ∈ S.definable n → (U ∩ V) ∈ S.definable n) ∧
-    (∀ U : Set (Fin n → ℝ), U ∈ S.definable n → ((Set (Fin n → ℝ) \ U) ∈ S.definable n))
-  sorry
+    ((∀ U V : Set (Fin n →  ℝ), U ∈ S.definable n → V ∈ S.definable n → (U ∩ V) ∈ S.definable n) ∧
+    (∀ U : Set (Fin n → ℝ), U ∈ S.definable n → (Uᶜ ∈ S.definable n))) → true
