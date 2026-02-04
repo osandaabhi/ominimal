@@ -1,15 +1,12 @@
 import Mathlib
 
--- define a boolean alegbra
-
-inductive BooleanAlgebra where
-  | top : BooleanAlgebra
-  | bottom : BooleanAlgebra
-  | union : BooleanAlgebra → BooleanAlgebra → BooleanAlgebra
-  | intersection : BooleanAlgebra → BooleanAlgebra → BooleanAlgebra
-  | complement : BooleanAlgebra → BooleanAlgebra
-
-
+open Set
 open BooleanAlgebra
 
-#check top
+def seq (n : ℕ) := BooleanAlgebra (Set (Fin n →  ℝ) )
+
+
+#print BooleanAlgebra
+
+example s ⊓ sᶜ = (⊥ : Set ℝ) := by
+  exact inf_compl_eq_bot
