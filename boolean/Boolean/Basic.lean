@@ -1,29 +1,37 @@
 import Mathlib
+set_option linter.style.longLine false
+set_option linter.deprecated false
+set_option linter.unnecessarySimpa false
 
 open Set
 open BooleanAlgebra
 
-def seq (n : ℕ) := BooleanAlgebra (Set (Fin n →  ℝ) )
+def BoolAlgSeq : Type := BooleanAlgebra (ℕ → Set ℝ)
 
--- #print BooleanAlgebra
+--example {s} : s ⊓ sᶜ = (⊥ : Set ℝ) := by simp only [inf_compl_eq_bot]
 
-variable (s t : Set ℝ)
+-- structure DefinableFamily :=
+--   (definable : ∀ n: ℕ, Set (Set (Fin n → ℝ)))
+variable (S : Set (α × β))
+def proj_fst : Set α := {x | ∃ y, (x, y) ∈ S}
 
--- #check (inferInstance : BooleanAlgebra (Set ℝ))
+def OminStrucure (S : (ℕ → Set ℝ)) : Prop :=
+  IsBooleanAlgebra S ∧
+  ∀ n : ℕ, S n = Set (Set (Fin n → ℝ)) ∧
+  A ∈ S n → prod A ℝ ∈ S (n + 1) ∧
+  A ∈ S n → prod ℝ A ∈ S (n + 1) ∧
+  ∀ i j : ℕ, 1 ≤ i ∧ i < j ∧ j ≤ n {v : Vector ℝ n | v.get i = v.get j} ∈ S n ∧
+  A ∈ S (n+1) → proj_fst A ∈ S n ∧
+  ∀ r : ℝ, {r} ∈ S 1 ∧
+  {v : Vector ℝ 2 | v.get 0 < v.get 1} ∈ S 2
 
-#check inf_compl_eq_bot
+def definableFunction {n m : ℕ} :  Set (Set (Fin n → ℝ)) → Set (Set (Fin m → ℝ)) := sorry
 
-example : s ⊓ sᶜ = (⊥ : Set ℝ) := by simpa using (inf_compl_eq_bot s)
 
-universe u
+section
 
-structure DefinableFamily :=
-  (definable : ∀ n: ℕ, Set (Set (Fin n → ℝ)))
+variable (a b : ℝ)
+variable (f : Set.Ioo a b → ℝ)
 
-def IsStrucure (S : DefinableFamily) : Prop :=
-  ∀ n : ℕ, /-
-    (∀ A : Set (Fin n → ℝ), A ∈ S.definable n →
-      (∀ i : Fin n, ∃ U : Set ℝ, U ∈ S.definable 1 ∧
-        (∀ x : Fin n → ℝ, x ∈ A → x i ∈ U))) ∧-/
-    ((∀ U V : Set (Fin n →  ℝ), U ∈ S.definable n → V ∈ S.definable n → (U ∩ V) ∈ S.definable n) ∧
-    (∀ U : Set (Fin n → ℝ), U ∈ S.definable n → (Uᶜ ∈ S.definable n))) → true
+--theorem monotonicity_theorem : (∀ x y : Set.Ioo a b, x ⊆ y → f x ≤ f y) ∨ (∀ x y : Set.Ioo a b, x ⊆ y → f x ≥ f y) := sorry
+end
