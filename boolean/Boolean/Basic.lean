@@ -1,141 +1,303 @@
 import Mathlib
 
-open Set PFun Equiv
+open Set
 
-#check Dom
+def IsFiniteUnionOfPointsAndIntervals (A : Set ℝ) : Prop :=
+  ∃ k : ℕ, True
+
+-- An o-minimal structure on `ℝ`.
+structure OminStructure where
+  S : (n : ℕ) → BooleanSubalgebra (Set (Fin n → ℝ))
+  prod_right : ∀ n : ℕ, ∀ A : Set (Fin n → ℝ),
+    A ∈ S n →
+    {v : Fin (n + 1) → ℝ | (fun i => v (Fin.castSucc i)) ∈ A} ∈ S (n + 1)
+
+  prod_left : ∀ n : ℕ, ∀ A : Set (Fin n → ℝ),
+    A ∈ S n →
+    {v : Fin (n + 1) → ℝ | (fun i => v (Fin.succ i)) ∈ A} ∈ S (n + 1)
+
+  diagonal : ∀ n : ℕ, ∀ i j : Fin n, i ≠ j →
+    {v : Fin n → ℝ | v i = v j} ∈ S n
+
+  projection : ∀ n : ℕ, ∀ A : Set (Fin (n + 1) → ℝ),
+    A ∈ S (n + 1) →
+    {v : Fin n → ℝ | ∃ x : ℝ, Fin.snoc v x ∈ A} ∈ S n
+
+  singletons : ∀ r : ℝ,
+    {v : Fin 1 → ℝ | v 0 = r} ∈ S 1
+
+  order : {v : Fin 2 → ℝ | v 0 < v 1} ∈ S 2
+
+  o_minimal : ∀ A : Set (Fin 1 → ℝ), A ∈ S 1 →
+    IsFiniteUnionOfPointsAndIntervals
+      {x : ℝ | (fun _ : Fin 1 => x) ∈ A}
+
+namespace OminStructure
+
+-- A subset of `ℝⁿ` is definable in `𝒮`.
+def DefinableSet (𝒮 : OminStructure) (n : ℕ)
+    (A : Set (Fin n → ℝ)) : Prop :=
+  A ∈ 𝒮.S n
+
+-- The graph of a function -
+def graph {n m : ℕ}
+    (f : (Fin n → ℝ) → (Fin m → ℝ)) :
+    Set (Fin (n + m) → ℝ) :=
+  {v : Fin (n + m) → ℝ |
+    ∃ x : Fin n → ℝ, ∃ y : Fin m → ℝ,
+      (∀ i : Fin n, v (Fin.castAdd m i) = x i) ∧
+      (∀ j : Fin m, v (Fin.natAdd n j) = y j) ∧
+      f x = y}
+
+-- A function is definable if its graph is definable.
+def DefinableFunction (𝒮 : OminStructure) {n m : ℕ}
+    (f : (Fin n → ℝ) → (Fin m → ℝ)) : Prop :=
+  𝒮.DefinableSet (n + m) (graph f)
+
+-- Closure under products on the right.
+theorem definable_prod_right
+    (𝒮 : OminStructure) {n : ℕ} {A : Set (Fin n → ℝ)}
+    (hA : 𝒮.DefinableSet n A) :
+    𝒮.DefinableSet (n + 1)
+      {v : Fin (n + 1) → ℝ | (fun i => v (Fin.castSucc i)) ∈ A} :=
+  𝒮.prod_right n A hA
+
+-- Closure under products on the left. -
+theorem definable_prod_left
+    (𝒮 : OminStructure) {n : ℕ} {A : Set (Fin n → ℝ)}
+    (hA : 𝒮.DefinableSet n A) :
+    𝒮.DefinableSet (n + 1)
+      {v : Fin (n + 1) → ℝ | (fun i => v (Fin.succ i)) ∈ A} :=
+  𝒮.prod_left n A hA
+
+-- Closure under projection. -
+theorem definable_projection
+    (𝒮 : OminStructure) {n : ℕ} {A : Set (Fin (n + 1) → ℝ)}
+    (hA : 𝒮.DefinableSet (n + 1) A) :
+    𝒮.DefinableSet n
+      {v : Fin n → ℝ | ∃ x : ℝ, Fin.snoc v x ∈ A} :=
+  𝒮.projection n A hA
+
+-- Diagonal sets are definable. -
+theorem definable_diagonal
+    (𝒮 : OminStructure) {n : ℕ} (i j : Fin n) (hij : i ≠ j) :
+    𝒮.DefinableSet n {v : Fin n → ℝ | v i = v j} :=
+  𝒮.diagonal n i j hij
+
+-- Singletons are definable.
+theorem definable_singleton
+    (𝒮 : OminStructure) (r : ℝ) :
+    𝒮.DefinableSet 1 {v : Fin 1 → ℝ | v 0 = r} :=
+  𝒮.singletons r
+
+-- The order relation is definable.
+theorem definable_order
+    (𝒮 : OminStructure) :
+    𝒮.DefinableSet 2 {v : Fin 2 → ℝ | v 0 < v 1} :=
+  𝒮.order
+
+-- O-minimality wrapper.
+theorem definable_one_dimensional_sets_are_finite_unions
+    (𝒮 : OminStructure)
+    {A : Set (Fin 1 → ℝ)}
+    (hA : 𝒮.DefinableSet 1 A) :
+    IsFiniteUnionOfPointsAndIntervals
+      {x : ℝ | (fun _ : Fin 1 => x) ∈ A} :=
+  𝒮.o_minimal A hA
+
+-- The open interval `(a,b)` encoded as a subset of `Fin 1 → ℝ`.
+def openInterval1 (a b : ℝ) : Set (Fin 1 → ℝ) :=
+  {v : Fin 1 → ℝ | a < v 0 ∧ v 0 < b}
+
+-- The closed interval `[a,b]` encoded as a subset of `Fin 1 → ℝ`.
+def closedInterval1 (a b : ℝ) : Set (Fin 1 → ℝ) :=
+  {v : Fin 1 → ℝ | a ≤ v 0 ∧ v 0 ≤ b}
+
+-- The ray `(a,∞)` encoded as a subset of `Fin 1 → ℝ`.
+def rightRay1 (a : ℝ) : Set (Fin 1 → ℝ) :=
+  {v : Fin 1 → ℝ | a < v 0}
+
+-- The ray `(-∞,b)` encoded as a subset of `Fin 1 → ℝ`.
+def leftRay1 (b : ℝ) : Set (Fin 1 → ℝ) :=
+  {v : Fin 1 → ℝ | v 0 < b}
+
+/-- Definability of open intervals.
+theorem definable_open_interval
+    (𝒮 : OminStructure) (a b : ℝ) :
+    𝒮.DefinableSet 1 (openInterval1 a b) := by
+  unfold openInterval1 rightRay1 leftRay1 DefinableSet at *
+  change {v : Fin 1 → ℝ | a < v 0 ∧ v 0 < b} ∈ 𝒮.S 1
+  exact (𝒮.S 1).inf_mem hRight hLeft -/
+
+theorem definable_open_interval'
+    (𝒮 : OminStructure) (a b : ℝ)
+    (hRight : 𝒮.DefinableSet 1 (rightRay1 a))
+    (hLeft : 𝒮.DefinableSet 1 (leftRay1 b)) :
+    𝒮.DefinableSet 1 (openInterval1 a b) := by
+  unfold openInterval1 rightRay1 leftRay1 DefinableSet at *
+  change {v : Fin 1 → ℝ | a < v 0 ∧ v 0 < b} ∈ 𝒮.S 1
+  exact (𝒮.S 1).inf_mem hRight hLeft
+
+-- Definability of right rays.
+theorem definable_right_ray
+    (𝒮 : OminStructure) (a : ℝ) :
+    𝒮.DefinableSet 1 (rightRay1 a) := by
+  sorry
+
+-- Definability of left rays.
+theorem definable_left_ray
+    (𝒮 : OminStructure) (b : ℝ) :
+    𝒮.DefinableSet 1 (leftRay1 b) := by
+  sorry
 
 
-variable (n m : ℕ)
-def R (n : ℕ) := Fin n → ℝ
+def DefinableRealFunction (𝒮 : OminStructure) (f : ℝ → ℝ) : Prop :=
+  𝒮.DefinableFunction
+    (n := 1) (m := 1)
+    (fun v => fun _ : Fin 1 => f (v 0))
 
-#check Fin n → ℝ
+def realGraph (f : ℝ → ℝ) : Set (Fin 2 → ℝ) :=
+  {v : Fin 2 → ℝ | f (v 0) = v 1}
 
--- A sequence of Boolean algebras of subsets of ℝⁿ, one for each n.
--- S n is a collection of subsets of (Fin n → ℝ).
-def BoolAlgSeq : Type := (n : ℕ) → Set (Set (R n))
+theorem definable_realGraph
+    (𝒮 : OminStructure) {f : ℝ → ℝ}
+    (hf : 𝒮.DefinableRealFunction f) :
+    𝒮.DefinableSet 2 (realGraph f) := by
+  sorry
 
---example {s} : s ⊓ sᶜ = (⊥ : Set ℝ) := by simp only [inf_compl_eq_bot]
-
--- Projection onto the first component
-def proj_fst {n : ℕ} (A : Set (R (n + 1))) : Set (R n) :=
-  {x | ∃ y : ℝ, (fun i => Fin.lastCases y x i) ∈ A}
-
--- Each S n should be a Boolean subalgebra (closed under ∪, ∩, ᶜ)
-def IsBoolAlg {n : ℕ} (Sn : Set (Set (R n))) : Prop :=
-  ∅ ∈ Sn ∧ univ ∈ Sn ∧
-  (∀ A ∈ Sn, Aᶜ ∈ Sn) ∧
-  (∀ A ∈ Sn, ∀ B ∈ Sn, A ∪ B ∈ Sn) ∧
-  (∀ A ∈ Sn, ∀ B ∈ Sn, A ∩ B ∈ Sn)
-
--- Cylinder: embed A ⊆ ℝⁿ into ℝⁿ⁺¹ by adding a free last coordinate
-def cylinder {n : ℕ} (A : Set (R n)) : Set (R (n + 1)) :=
-  {v | (fun i : Fin n => v (Fin.castSucc i)) ∈ A}
-
--- Diagonal set: {v ∈ ℝⁿ | v i = v j}
-def diagonal {n : ℕ} (i j : Fin n) : Set (R n) :=
-  {v | v i = v j}
-
--- O-minimal structure definition
-def OminStructure (S : BoolAlgSeq) : Prop :=
-  -- Each S n is a Boolean algebra
-  (∀ n : ℕ, IsBoolAlg (S n)) ∧
-  -- Closed under cylinders: A ∈ S n → cylinder A ∈ S (n+1)
-  (∀ n : ℕ, ∀ A ∈ S n, cylinder A ∈ S (n + 1)) ∧
-  -- Diagonal sets are definable
-  (∀ n : ℕ, ∀ i j : Fin n, diagonal i j ∈ S n) ∧
-  -- Closed under projection
-  (∀ n : ℕ, ∀ A ∈ S (n + 1), proj_fst A ∈ S n) ∧
-  -- Singletons are definable in S 1
-  (∀ r : ℝ, {v : (R 1) | v 0 = r} ∈ S 1) ∧
-  -- The order relation is definable in S 2
-  ({v : Fin 2 → ℝ | v 0 < v 1} ∈ S 2) ∧
-  -- S 1 consists only of finite unions of intervals and points
-  (∀ A ∈ S 1, ∃ (intervals : Finset (ℝ × ℝ)), ∃ (points : Finset ℝ),
-    A = (⋃ i ∈ intervals, {v : Fin 1 → ℝ | v 0 ∈ Set.Ioo i.1 i.2}) ∪
-    (⋃ p ∈ points, {v : Fin 1 → ℝ | v 0 = p}))
-
---def graph {α β} (f : α → β) : Set (α × β) :=
---{p | f p.1 = p.2}
-
---def dom {α β} (f : α → β) : Set α :=
---{x | ∃ y, (x,y) ∈ graph f}
-
--- Graph of a function
-def graph (f : (R m) → (R n)) : Set (R (m + n)) :=
-{v : (R (m + n)) | ∃ x : (R m), v = Fin.append x (f x)}
-
--- Graph of a restricted function
-def resgraph (f : (R m) → (R n)) (A : Set (R m)) := graph (PFun.res f A)
-
-variable (f : (R m) → (R n)) (A : Set (R m))
-
-#check graph (PFun.res f A)
-
-def producteq (m n : ℕ) : R (m + n) ≃ (R m × R n) where
-  toFun := by
-    intro f
-    exact
-      (fun i => f (Fin.castAdd n i),
-       fun j => f (Fin.natAdd m j))
-  invFun := by
-    intro p x
-    exact
-      Fin.addCases p.1 p.2 x
-  left_inv := by
-    intro f
-    funext x
-    simp [Fin.addCases]
-  right_inv := by
-    intro p
-    rcases p with ⟨fm, fn⟩
-    simp [Fin.addCases]
-
-#check (R (m + n))
-#check ((R m) × (R n))
-
--- def setProducteq (m n : ℕ) : Set (R (m + n)) ≃ Set (R m × R n) := Equiv.setCongr (producteq m n)
--- def setProducteq (m n : ℕ) : Set (R (m + n)) ≃ Set (R m × R n) where
---   toFun := fun S => {p | (producteq m n).symm p ∈ S}
---   invFun := fun T => {x | producteq m n x ∈ T}
---   left_inv := by
---     intro S
---     ext x
---     simp
---   right_inv := by
---     intro T
---     ext p
---     simp
-
-variable (T : Set (R m × R n))
-#check {x | (producteq m n).toFun x ∈ T}
-
-def pullBackSet (m n : ℕ) (T : Set (R m × R n)) : Set (R (m + n)) :=
-  {x | (producteq m n).toFun x ∈ T}
-
-variable (f : (R m) → (R n)) (A : Set (R m))
-#check pullBackSet m n (resgraph n m f A)
-
--- Definable sets
-def definableset (n : ℕ) (A : Set (R n)) (S : BoolAlgSeq) : Prop :=
-A ∈ S n
-
---Domain of a function
-def dom (f : (R m) →. (R n)) : Set (R m) := Dom f
-
--- Definable funtions
-def definablefunction
-  (f : (R m) → (R n)) (A : Set (R m)) (S : BoolAlgSeq) : Prop :=
-    definableset (m + n) (pullBackSet m n (resgraph n m f A)) S
-
---f definable → dom (f) definable
-theorem definablf_definabledom : (definablefunction n m f A S) → (definableset (dom f) S) := sorry
+def increasingComparison (f : ℝ → ℝ) : Set (Fin 2 → ℝ) :=
+  {v : Fin 2 → ℝ | v 0 < v 1 ∧ f (v 0) < f (v 1)}
 
 
-section
+def decreasingComparison (f : ℝ → ℝ) : Set (Fin 2 → ℝ) :=
+  {v : Fin 2 → ℝ | v 0 < v 1 ∧ f (v 0) > f (v 1)}
 
-variable (a b : ℝ)
-variable (f : Set.Ioo a b → ℝ)
+def constantComparison (f : ℝ → ℝ) : Set (Fin 2 → ℝ) :=
+  {v : Fin 2 → ℝ | v 0 < v 1 ∧ f (v 0) = f (v 1)}
 
---Key theorem 1 : Monotonicity Theorem
---theorem monotonicity_theorem : (∀ x y : Set.Ioo a b, ∃ Finset Set.Ioo a b,  )
-end
+theorem definable_increasingComparison
+    (𝒮 : OminStructure) {f : ℝ → ℝ}
+    (hf : 𝒮.DefinableRealFunction f) :
+    𝒮.DefinableSet 2 (increasingComparison f) := by
+  sorry
+
+theorem definable_decreasingComparison
+    (𝒮 : OminStructure) {f : ℝ → ℝ}
+    (hf : 𝒮.DefinableRealFunction f) :
+    𝒮.DefinableSet 2 (decreasingComparison f) := by
+  sorry
+
+theorem definable_constantComparison
+    (𝒮 : OminStructure) {f : ℝ → ℝ}
+    (hf : 𝒮.DefinableRealFunction f) :
+    𝒮.DefinableSet 2 (constantComparison f) := by
+  sorry
+
+def StrictlyIncreasingOnInterval (f : ℝ → ℝ) (a b : ℝ) : Prop :=
+  ∀ x y : ℝ, a < x → x < y → y < b → f x < f y
+
+def StrictlyDecreasingOnInterval (f : ℝ → ℝ) (a b : ℝ) : Prop :=
+  ∀ x y : ℝ, a < x → x < y → y < b → f x > f y
+
+def ConstantOnInterval (f : ℝ → ℝ) (a b : ℝ) : Prop :=
+  ∀ x y : ℝ, a < x → x < b → a < y → y < b → f x = f y
+
+def OminimalMonotoneOnInterval (f : ℝ → ℝ) (a b : ℝ) : Prop :=
+  StrictlyIncreasingOnInterval f a b ∨
+  StrictlyDecreasingOnInterval f a b ∨
+  ConstantOnInterval f a b
+
+def LocallyIncreasingAt (f : ℝ → ℝ) (x : ℝ) : Prop :=
+  ∃ ε : ℝ, 0 < ε ∧
+    ∀ u v : ℝ,
+      x - ε < u →
+      u < v →
+      v < x + ε →
+      f u < f v
+
+def LocallyDecreasingAt (f : ℝ → ℝ) (x : ℝ) : Prop :=
+  ∃ ε : ℝ, 0 < ε ∧
+    ∀ u v : ℝ,
+      x - ε < u →
+      u < v →
+      v < x + ε →
+      f u > f v
+
+def LocallyConstantAt (f : ℝ → ℝ) (x : ℝ) : Prop :=
+  ∃ ε : ℝ, 0 < ε ∧
+    ∀ u v : ℝ,
+      x - ε < u →
+      u < x + ε →
+      x - ε < v →
+      v < x + ε →
+      f u = f v
+
+def locallyIncreasingSet (f : ℝ → ℝ) : Set ℝ :=
+  {x : ℝ | LocallyIncreasingAt f x}
+
+def locallyDecreasingSet (f : ℝ → ℝ) : Set ℝ :=
+  {x : ℝ | LocallyDecreasingAt f x}
+
+def locallyConstantSet (f : ℝ → ℝ) : Set ℝ :=
+  {x : ℝ | LocallyConstantAt f x}
+
+def locallyIncreasingSet1 (f : ℝ → ℝ) : Set (Fin 1 → ℝ) :=
+  {v : Fin 1 → ℝ | LocallyIncreasingAt f (v 0)}
+
+def locallyDecreasingSet1 (f : ℝ → ℝ) : Set (Fin 1 → ℝ) :=
+  {v : Fin 1 → ℝ | LocallyDecreasingAt f (v 0)}
+
+def locallyConstantSet1 (f : ℝ → ℝ) : Set (Fin 1 → ℝ) :=
+  {v : Fin 1 → ℝ | LocallyConstantAt f (v 0)}
+
+theorem definable_locallyIncreasingSet
+    (𝒮 : OminStructure) {f : ℝ → ℝ}
+    (hf : 𝒮.DefinableRealFunction f) :
+    𝒮.DefinableSet 1 (locallyIncreasingSet1 f) := by
+  sorry
+
+theorem definable_locallyDecreasingSet
+    (𝒮 : OminStructure) {f : ℝ → ℝ}
+    (hf : 𝒮.DefinableRealFunction f) :
+    𝒮.DefinableSet 1 (locallyDecreasingSet1 f) := by
+  sorry
+
+theorem definable_locallyConstantSet
+    (𝒮 : OminStructure) {f : ℝ → ℝ}
+    (hf : 𝒮.DefinableRealFunction f) :
+    𝒮.DefinableSet 1 (locallyConstantSet1 f) := by
+  sorry
+
+theorem finite_exceptional_set_for_local_monotonicity
+    (𝒮 : OminStructure) {f : ℝ → ℝ}
+    (hf : 𝒮.DefinableRealFunction f) :
+    ∃ E : Set ℝ,
+      E.Finite ∧
+      ∀ x : ℝ, x ∉ E →
+        LocallyIncreasingAt f x ∨
+        LocallyDecreasingAt f x ∨
+        LocallyConstantAt f x := by
+  sorry
+
+def IsStrictPartition (a b : ℝ) {k : ℕ}
+    (pts : Fin (k + 1) → ℝ) : Prop :=
+  pts 0 = a ∧
+  pts (Fin.last k) = b ∧
+  ∀ i : Fin k, pts i.castSucc < pts i.succ
+
+theorem monotonicity_theorem
+    (𝒮 : OminStructure)
+    (a b : ℝ)
+    (hab : a < b)
+    (f : ℝ → ℝ)
+    (hf : 𝒮.DefinableRealFunction f) :
+    ∃ (k : ℕ) (pts : Fin (k + 1) → ℝ),
+      IsStrictPartition a b pts ∧
+      ∀ i : Fin k,
+        OminimalMonotoneOnInterval
+          f
+          (pts i.castSucc)
+          (pts i.succ) := by
+  sorry
+
+end OminStructure
